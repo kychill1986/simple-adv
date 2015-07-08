@@ -1,3 +1,5 @@
+此项目是simple项目升级版，在simple的基础上增加了mybatis，spring，redis
+
 此项目集成了spring-boot的基本业务
 
 说明:
