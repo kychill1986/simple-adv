@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.google.gson.Gson;
 import com.yang.simple.business.UserService;
+import com.yang.simple.config.SystemConfig;
 import com.yang.simple.entity.Users;
 import com.yang.simple.redis.UserRepository;
 
@@ -21,6 +22,9 @@ public class SimpleController {
 	
 	@Autowired
 	protected UserRepository userRepository;
+	
+	@Autowired
+	protected SystemConfig systemConfig;
 
 	@RequestMapping(value = "/hello", method = RequestMethod.GET)
 	@ResponseBody
@@ -35,5 +39,7 @@ public class SimpleController {
 	private void testRedis(){
 		userRepository.saveUser("Chill");
 		System.out.println(userRepository.getUser());
+		
+		System.out.println(systemConfig.getProjectName());
 	}
 }
