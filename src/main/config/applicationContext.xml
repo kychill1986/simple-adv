@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:c="http://www.springframework.org/schema/c"
+    xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:cache="http://www.springframework.org/schema/cache"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context-3.2.xsd
+           http://www.springframework.org/schema/aop
+           http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+           http://www.springframework.org/schema/tx 
+           http://www.springframework.org/schema/tx/spring-tx-3.2.xsd
+           http://www.springframework.org/schema/mvc
+           http://www.springframework.org/schema/mvc/spring-mvc-3.2.xsd
+           http://www.springframework.org/schema/cache 
+           http://www.springframework.org/schema/cache/spring-cache.xsd
+           http://www.springframework.org/schema/task 
+           http://www.springframework.org/schema/task/spring-task-3.0.xsd">
+
+  	<!-- 用注解方式注入bean -->
+	<context:annotation-config />
+	<context:component-scan base-package="com.yang"/>
+    
+	<!-- 使用AspectJ方式配置AOP -->
+    <aop:aspectj-autoproxy proxy-target-class="true" />
+    <aop:config proxy-target-class="true" />
+    <bean id="propertyConfigurer"  class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+     <property name="locations">
+       <list>
+            <value>classpath:jdbc.properties</value>
+            <value>classpath:sys.properties</value>
+       </list>
+     </property>
+    </bean>
+    
+	<!-- 数据源配置 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}" />
+        <property name="url" value="${jdbc.url}" />
+        <property name="username" value="${jdbc.username}" />
+        <property name="password" value="${jdbc.password}" />
+        
+        <!-- 配置初始化大小、最小、最大,通常来说，只需要修改initialSize、minIdle、maxActive -->
+        <property name="initialSize" value="${jdbc.pool.initialSize}"/>
+        <property name="maxActive" value="${jdbc.pool.maxActive}"/>
+        <property name="minIdle" value="${jdbc.pool.minIdle}"/> 
+        
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="${jdbc.pool.maxWait}"/> 
+        
+        <property name="removeAbandoned" value="${jdbc.pool.removeAbandoned}"/>  
+        <property name="removeAbandonedTimeout" value="${jdbc.pool.removeAbandonedTimeout}"/>
+        <property name= "testWhileIdle" value="${jdbc.pool.testWhileIdle}" />  
+        <property name= "testOnBorrow" value="${jdbc.pool.testOnBorrow}" />  
+        <property name= "testOnReturn" value="${jdbc.pool.testOnReturn}" />  
+        
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name= "timeBetweenEvictionRunsMillis" value="${jdbc.pool.timeBetweenEvictionRunsMillis}" />  
+        
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="${jdbc.pool.minEvictableIdleTimeMillis}" />
+        
+        <!-- 打开PSCache，并且指定每个连接上PSCache的大小 -->
+        <property name="poolPreparedStatements" value="${jdbc.pool.poolPreparedStatements}" />
+        <property name="maxPoolPreparedStatementPerConnectionSize" value="${jdbc.pool.maxPoolPreparedStatementPerConnectionSize}" />
+      
+        <property name= "numTestsPerEvictionRun" value="${jdbc.pool.numTestsPerEvictionRun}" />  
+        <property name="filters" value="stat" /> 
+    </bean>
+    
+    <!-- ======================== mybatis ======================== -->
+	<bean id="mainSqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:mybatis-config.xml" />
+	</bean>
+
+	<!-- scan for mappers and let them be autowired -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.yang.simple.dao" />
+	</bean>
+    
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager"> 
+         <property name="dataSource"> 
+             <ref local="dataSource"/> 
+         </property> 
+    </bean>
+    
+    <!--启动spring注解功能-->    
+    <tx:annotation-driven transaction-manager="txManager" />
+    
+    <aop:config>
+		<aop:pointcut expression="(execution(public * com.yang.simple.business..*.*(..)))" id="fumsServiceMethods" />
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="fumsServiceMethods" />
+	</aop:config>
+	<aop:aspectj-autoproxy />
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="save*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="put*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="add*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="delete*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="update*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="modify*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="sync*" propagation="REQUIRED" rollback-for="Exception"/>
+			<tx:method name="nestedz*" propagation="NESTED" rollback-for="Exception"/>
+			<tx:method name="get*" read-only="true" />
+			<tx:method name="load*" read-only="true" />
+			<tx:method name="find*" read-only="true" />
+		</tx:attributes>
+	</tx:advice>
+	
+	<!-- ======================== Redis ======================== -->
+	<bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">  
+        <property name="maxIdle" value="${redis.maxIdle}"></property>  
+        <property name="minEvictableIdleTimeMillis" value="${redis.minEvictableIdleTimeMillis}"></property>  
+        <property name="numTestsPerEvictionRun" value="${redis.numTestsPerEvictionRun}"></property>  
+        <property name="timeBetweenEvictionRunsMillis" value="${redis.timeBetweenEvictionRunsMillis}"></property>  
+    </bean>  
+    <bean id="jedisConnectionFactory" class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory" destroy-method="destroy">  
+        <property name="poolConfig" ref="jedisPoolConfig"></property>  
+        <property name="hostName" value="${redis.hostName}"></property>  
+        <property name="port" value="${redis.port}"></property>  
+        <property name="database" value="${redis.dbIndex}"></property>  
+        <!--<property name="password" value="0123456"></property> --> 
+        <property name="timeout" value="${redis.timeout}"></property>  
+        <property name="usePool" value="${redis.usePool}"></property>  
+    </bean>  
+    <bean id="jedisTemplate" class="org.springframework.data.redis.core.RedisTemplate">  
+        <property name="connectionFactory" ref="jedisConnectionFactory"></property>  
+	    <property name="keySerializer">  
+	        <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>  
+	    </property>  
+	    <property name="hashKeySerializer">  
+	        <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>  
+	    </property>  
+	    <property name="valueSerializer">  
+	        <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>  
+	    </property>  
+	    <property name="hashValueSerializer">  
+	        <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>  
+	    </property>  
+    </bean>  
+    
+    <!-- ======================== Task ======================== -->
+    <task:executor id="executor" pool-size="5-20" queue-capacity="50"/>  
+    <task:scheduler id="scheduler" pool-size="10" />  
+    <task:annotation-driven executor="executor" scheduler="scheduler" />
+</beans>
